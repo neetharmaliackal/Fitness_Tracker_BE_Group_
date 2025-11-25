@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    image: fitness-backend-web            # VALID image name
+    container_name: fitness-backend-web
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=fitness_backend.settings
