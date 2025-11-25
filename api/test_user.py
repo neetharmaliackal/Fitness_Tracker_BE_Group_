@@ -8,7 +8,7 @@ from rest_framework import status
 User = get_user_model()
 
 
-class UserRegistrationTest(TestCase):
+class TestUserRegistrationTest(TestCase):
     def setUp(self):
         self.client = APIClient()
 
