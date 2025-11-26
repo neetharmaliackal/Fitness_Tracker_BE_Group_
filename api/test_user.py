@@ -6,6 +6,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from api.models import Activity
 from rest_framework.test import APITestCase
+import pytest
+from datetime import date
+
 
 
 
@@ -168,6 +171,48 @@ class TestActivityCreate(APITestCase):
         self.assertEqual(activity.activity_type, "workout")
         self.assertEqual(str(activity.date), "2025-11-04")
         self.assertEqual(activity.status, "planned")
+
+@pytest.mark.django_db
+def test_list_activities():
+    client = APIClient()
+
+    # Create a test user
+    user = User.objects.create_user(
+        username="testuser",
+        email="testuser@example.com",
+        password="StrongPass123"
+    )
+
+    # Authenticate
+    client.force_authenticate(user=user)
+
+    # Create multiple activities
+    Activity.objects.create(
+        user=user,
+        activity_type="workout",
+        description="Morning run 5km",
+        date=date(2025, 11, 4),
+        status="planned"
+    )
+    Activity.objects.create(
+        user=user,
+        activity_type="meal",
+        description="Lunch",
+        date=date(2025, 11, 4),
+        status="completed"
+    )
+
+    # API GET request to list activities
+    response = client.get("/api/activities/")
+
+    # Assertions
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 2
+    descriptions = [activity["description"] for activity in response.data]
+    assert "Morning run 5km" in descriptions
+    assert "Lunch" in descriptions
+
+
 
 
 

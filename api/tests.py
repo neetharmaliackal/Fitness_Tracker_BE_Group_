@@ -131,6 +131,20 @@ class ActivityAPITest(TestCase):
         self.assertEqual(Activity.objects.first().description, "Gym session")
 
 
+    def test_list_activities(self):
+        """
+        Test listing activities.
+        URL: /api/activities/
+        """
+        Activity.objects.create(
+            user=self.user,
+            activity_type="meal",
+            description="Lunch",
+            date=date.today()
+        )
+        response = self.client.get("/api/activities/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
 
 
 
