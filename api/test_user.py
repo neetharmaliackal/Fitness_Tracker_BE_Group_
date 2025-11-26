@@ -6,8 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from api.models import Activity
 from rest_framework.test import APITestCase
-import pytest
-from datetime import date
+
 
 
 
@@ -172,49 +171,90 @@ class TestActivityCreate(APITestCase):
         self.assertEqual(str(activity.date), "2025-11-04")
         self.assertEqual(activity.status, "planned")
 
-@pytest.mark.django_db
-def test_list_activities():
-    client = APIClient()
 
-    # Create a test user
-    user = User.objects.create_user(
-        username="testuser",
-        email="testuser@example.com",
-        password="StrongPass123"
-    )
+class TestActivityList(APITestCase):
+    def setUp(self):
+        # Setup API client is already available as self.client from APITestCase
+        # Create two users
+        self.user1 = User.objects.create_user(
+            username="user1",
+            email="user1@example.com",
+            password="StrongPass123"
+        )
+        self.user2 = User.objects.create_user(
+            username="user2",
+            email="user2@example.com",
+            password="StrongPass123"
+        )
 
-    # Authenticate
-    client.force_authenticate(user=user)
+        # Generate JWT access token for user1
+        refresh = RefreshToken.for_user(self.user1)
+        self.access_token_user1 = str(refresh.access_token)
 
-    # Create multiple activities
-    Activity.objects.create(
-        user=user,
-        activity_type="workout",
-        description="Morning run 5km",
-        date=date(2025, 11, 4),
-        status="planned"
-    )
-    Activity.objects.create(
-        user=user,
-        activity_type="meal",
-        description="Lunch",
-        date=date(2025, 11, 4),
-        status="completed"
-    )
+        # Create activities for user1
+        self.activity1_u1 = Activity.objects.create(
+            user=self.user1,
+            activity_type="workout",
+            description="Run 5km",
+            date="2025-11-01",
+            status="completed",
+        )
+        self.activity2_u1 = Activity.objects.create(
+            user=self.user1,
+            activity_type="yoga",
+            description="Morning yoga",
+            date="2025-11-03",  # later date so this should come first
+            status="planned",
+        )
 
-    # API GET request to list activities
-    response = client.get("/api/activities/")
+        # Activity for user2 (should NOT appear)
+        self.activity_u2 = Activity.objects.create(
+            user=self.user2,
+            activity_type="workout",
+            description="User2 activity",
+            date="2025-11-02",
+            status="planned",
+        )
 
-    # Assertions
-    assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 2
-    descriptions = [activity["description"] for activity in response.data]
-    assert "Morning run 5km" in descriptions
-    assert "Lunch" in descriptions
+        self.url = "/api/activities/"
 
+    def test_list_activities_requires_authentication(self):
+        """
+        Unauthenticated request should be rejected with 401.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_list_activities_for_authenticated_user(self):
+        """
+        Authenticated user should get only their own activities,
+        ordered by date descending.
+        """
+        # Authenticate as user1
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token_user1}")
 
+        response = self.client.get(self.url)
 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Only 2 activities for user1
+        self.assertEqual(len(response.data), 2)
+
+        first = response.data[0]
+        second = response.data[1]
+
+        # Newest first
+        self.assertEqual(first["description"], "Morning yoga")
+        self.assertEqual(first["activity_type"], "yoga")
+        self.assertEqual(first["status"], "planned")
+        self.assertEqual(first["date"], "2025-11-03")
+
+        self.assertEqual(second["description"], "Run 5km")
+        self.assertEqual(second["activity_type"], "workout")
+        self.assertEqual(second["status"], "completed")
+        self.assertEqual(second["date"], "2025-11-01")
+
+        descriptions = [a["description"] for a in response.data]
+        self.assertNotIn("User2 activity", descriptions)
 
 
 # Create your tests here.
