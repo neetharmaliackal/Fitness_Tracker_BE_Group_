@@ -4,6 +4,9 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from api.models import Activity
+from rest_framework.test import APITestCase
+
 
 
 User = get_user_model()
@@ -124,6 +127,47 @@ class TestUserLogout(TestCase):
         with self.assertRaises(TokenError):
             refresh = RefreshToken(refresh_token)
             refresh.blacklist()
+
+class TestActivityCreate(APITestCase):
+    def setUp(self):
+        # Create test user
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="testuser@example.com",
+            password="StrongPass123"
+        )
+        # Generate JWT access token
+        refresh = RefreshToken.for_user(self.user)
+        self.access_token = str(refresh.access_token)
+
+        # Set Authorization header for API client
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token}")
+
+        # URL for creating activity
+        self.url = "/api/activities/create/"
+
+    def test_create_activity(self):
+        """
+        Test creating a new activity using the API.
+        """
+        data = {
+            "activity_type": "workout",
+            "description": "Morning run 5km",
+            "date": "2025-11-04",
+            "status": "planned"
+        }
+        response = self.client.post(self.url, data, format="json")
+
+        # Assert response is 201 CREATED
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Assert activity is saved in the database
+        self.assertEqual(Activity.objects.count(), 1)
+        activity = Activity.objects.first()
+        self.assertEqual(activity.description, "Morning run 5km")
+        self.assertEqual(activity.activity_type, "workout")
+        self.assertEqual(str(activity.date), "2025-11-04")
+        self.assertEqual(activity.status, "planned")
 
 
 

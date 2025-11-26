@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegistrationSerializer
+from .serializers import ActivitySerializer
 
 
 # Registration view
@@ -35,3 +36,10 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
 
+
+class ActivityCreateView(generics.CreateAPIView):
+    serializer_class = ActivitySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
