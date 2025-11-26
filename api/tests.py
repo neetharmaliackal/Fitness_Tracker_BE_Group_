@@ -75,6 +75,7 @@ class UserRegistrationTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertNotIn("access", response.data)
         self.assertNotIn("refresh", response.data)
+    #Logout testing
 
     def test_user_logout(self):
         # Step 1: Login to get access + refresh tokens
