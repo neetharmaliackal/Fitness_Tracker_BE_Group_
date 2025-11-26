@@ -2,6 +2,9 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
+from datetime import date
+from api.models import Activity
+
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -98,6 +101,36 @@ class UserRegistrationTest(TestCase):
         # Update here: check for 'detail' instead of 'message'
         self.assertIn("detail", response.data)
         self.assertEqual(response.data["detail"], "User logged out successfully.")
+
+
+class ActivityAPITest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="tester",
+            email="tester@example.com",
+            password="password123"
+        )
+        # Authenticate user for API calls
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_activity(self):
+        """
+        Test creating a new activity.
+        URL: /api/activities/create/
+        """
+        data = {
+            "activity_type": "workout",
+            "description": "Gym session",
+            "date": date.today().isoformat(),
+            "status": "planned"
+        }
+        response = self.client.post("/api/activities/create/", data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertEqual(Activity.objects.first().description, "Gym session")
+
+
 
 
 
