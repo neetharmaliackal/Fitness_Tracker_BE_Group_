@@ -9,6 +9,8 @@ from rest_framework.test import APITestCase
 
 
 
+
+
 User = get_user_model()
 
 
@@ -170,6 +172,89 @@ class TestActivityCreate(APITestCase):
         self.assertEqual(activity.status, "planned")
 
 
+class TestActivityList(APITestCase):
+    def setUp(self):
+        # Setup API client is already available as self.client from APITestCase
+        # Create two users
+        self.user1 = User.objects.create_user(
+            username="user1",
+            email="user1@example.com",
+            password="StrongPass123"
+        )
+        self.user2 = User.objects.create_user(
+            username="user2",
+            email="user2@example.com",
+            password="StrongPass123"
+        )
+
+        # Generate JWT access token for user1
+        refresh = RefreshToken.for_user(self.user1)
+        self.access_token_user1 = str(refresh.access_token)
+
+        # Create activities for user1
+        self.activity1_u1 = Activity.objects.create(
+            user=self.user1,
+            activity_type="workout",
+            description="Run 5km",
+            date="2025-11-01",
+            status="completed",
+        )
+        self.activity2_u1 = Activity.objects.create(
+            user=self.user1,
+            activity_type="yoga",
+            description="Morning yoga",
+            date="2025-11-03",  # later date so this should come first
+            status="planned",
+        )
+
+        # Activity for user2 (should NOT appear)
+        self.activity_u2 = Activity.objects.create(
+            user=self.user2,
+            activity_type="workout",
+            description="User2 activity",
+            date="2025-11-02",
+            status="planned",
+        )
+
+        self.url = "/api/activities/"
+
+    def test_list_activities_requires_authentication(self):
+        """
+        Unauthenticated request should be rejected with 401.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_activities_for_authenticated_user(self):
+        """
+        Authenticated user should get only their own activities,
+        ordered by date descending.
+        """
+        # Authenticate as user1
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token_user1}")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Only 2 activities for user1
+        self.assertEqual(len(response.data), 2)
+
+        first = response.data[0]
+        second = response.data[1]
+
+        # Newest first
+        self.assertEqual(first["description"], "Morning yoga")
+        self.assertEqual(first["activity_type"], "yoga")
+        self.assertEqual(first["status"], "planned")
+        self.assertEqual(first["date"], "2025-11-03")
+
+        self.assertEqual(second["description"], "Run 5km")
+        self.assertEqual(second["activity_type"], "workout")
+        self.assertEqual(second["status"], "completed")
+        self.assertEqual(second["date"], "2025-11-01")
+
+        descriptions = [a["description"] for a in response.data]
+        self.assertNotIn("User2 activity", descriptions)
 
 
 # Create your tests here.
