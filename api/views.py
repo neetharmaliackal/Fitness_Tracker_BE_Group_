@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegistrationSerializer
 from .serializers import ActivitySerializer
-
+from .models import Activity
 
 # Registration view
 class RegisterView(generics.CreateAPIView):
@@ -43,3 +43,11 @@ class ActivityCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+# List all user activities
+class ActivityListView(generics.ListAPIView):
+    serializer_class = ActivitySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Activity.objects.filter(user=self.request.user).order_by('-date')
