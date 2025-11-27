@@ -308,3 +308,44 @@ class TestActivityList(APITestCase):
         assert activity.status == "completed"
 
 # Create your tests here.
+    def test_delete_activity_success(self):
+        """
+        Authenticated user can delete their own activity and gets a custom message.
+        """
+        # Create a user
+        user = User.objects.create_user(
+            username="deleteuser",
+            email="deleteuser@example.com",
+            password="StrongPass123",
+        )
+
+        # Generate JWT token
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        # Use self.client from APITestCase
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        # Create an activity for this user
+        activity = Activity.objects.create(
+            user=user,
+            activity_type="workout",
+            description="Activity to delete",
+            date="2025-11-10",
+            status="planned",
+        )
+
+        # URL for detail/delete (same as update: /api/activities/<pk>/)
+        url = f"/api/activities/{activity.id}/"
+
+        # Send DELETE request
+        response = self.client.delete(url)
+
+        # Check response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+        self.assertEqual(response.data["detail"], "Activity deleted successfully!")
+
+        # Ensure activity is removed from the database
+        self.assertFalse(Activity.objects.filter(id=activity.id).exists())
+

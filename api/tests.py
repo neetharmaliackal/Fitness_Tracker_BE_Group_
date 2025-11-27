@@ -164,6 +164,22 @@ class ActivityAPITest(TestCase):
         self.assertEqual(activity.description, "5000 steps")
         self.assertEqual(activity.status, "completed")
 
+    def test_delete_activity(self):
+        """
+        Test deleting an activity.
+        URL: /api/activities/<id>/
+        """
+        activity = Activity.objects.create(
+            user=self.user,
+            activity_type="workout",
+            description="Gym session",
+            date=date.today()
+        )
+        response = self.client.delete(f"/api/activities/{activity.id}/")
+        # Must return 204 No Content for correct REST semantics
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Activity.objects.count(), 0)
+
 
 
 
