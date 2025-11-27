@@ -256,5 +256,55 @@ class TestActivityList(APITestCase):
         descriptions = [a["description"] for a in response.data]
         self.assertNotIn("User2 activity", descriptions)
 
+    def test_update_activity_success(self):
+        """
+        Authenticated user can update their own activity.
+        View: ActivityDetailView (PUT/PATCH on /api/activities/<pk>/)
+        """
+        client = APIClient()
+
+        # 1. Create user
+        user = User.objects.create_user(
+            username="testuser",
+            email="testuser@example.com",
+            password="StrongPass123",
+        )
+
+        # 2. JWT access token
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        # 3. Authenticate
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        # 4. Create an activity for this user
+        activity = Activity.objects.create(
+            user=user,
+            activity_type="workout",
+            description="Morning run 5km",
+            date="2025-11-04",
+            status="planned",
+        )
+
+        # 5. URL for detail/update
+        url = f"/api/activities/{activity.id}/"
+
+        # 6. Data to update (partial update, since your view uses partial=True)
+        update_data = {
+            "description": "Evening run 10km",
+            "status": "completed",
+        }
+
+        # Use PATCH (since your update method uses partial=True)
+        response = client.patch(url, update_data, format="json")
+
+        # 7. Check response
+        assert response.status_code == 200
+        assert response.data["detail"] == "Activity updated successfully!"
+
+        # 8. Check DB
+        activity.refresh_from_db()
+        assert activity.description == "Evening run 10km"
+        assert activity.status == "completed"
 
 # Create your tests here.
