@@ -346,3 +346,6 @@ class TestActivityList(APITestCase):
         self.assertIn("detail", response.data)
         self.assertEqual(response.data["detail"], "Activity deleted successfully!")
 
+        # Ensure activity is removed from the database
+        self.assertFalse(Activity.objects.filter(id=activity.id).exists())
+
