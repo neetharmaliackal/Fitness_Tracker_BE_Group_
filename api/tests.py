@@ -146,6 +146,25 @@ class ActivityAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
+    def test_update_activity(self):
+        """
+        Test updating an existing activity.
+        URL: /api/activities/<id>/
+        """
+        activity = Activity.objects.create(
+            user=self.user,
+            activity_type="steps",
+            description="3000 steps",
+            date=date.today()
+        )
+        data = {"description": "5000 steps", "status": "completed"}
+        response = self.client.patch(f"/api/activities/{activity.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        activity.refresh_from_db()
+        self.assertEqual(activity.description, "5000 steps")
+        self.assertEqual(activity.status, "completed")
+
+
 
 
 
